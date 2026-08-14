@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Assistant - Side Panel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      width: 100%;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .header {
+      background: #007bff;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .header-actions button {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+    
+    .header-actions button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .message {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    
+    .message.user {
+      background: #007bff;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .message.assistant {
+      background: white;
+      color: #333;
+      align-self: flex-start;
+      border: 1px solid #e0e0e0;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .message.system {
+      background: #fff3cd;
+      color: #856404;
+      align-self: center;
+      font-style: italic;
+      font-size: 12px;
+    }
+    
+    .message .actions-info {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(0,0,0,0.1);
+      font-size: 11px;
+      color: #666;
+    }
+    
+    .input-area {
+      padding: 12px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .input-wrapper {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
+    textarea {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      resize: none;
+      min-height: 60px;
+      font-family: inherit;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    
+    .send-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .send-btn:hover {
+      background: #0056b3;
+    }
+    
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .quick-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    
+    .quick-action-btn {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 16px;
+      padding: 6px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      color: #555;
+    }
+    
+    .quick-action-btn:hover {
+      background: #e0e0e0;
+    }
+    
+    .loading {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 10px;
+    }
+    
+    .page-info {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    
+    .page-info h3 {
+      font-size: 12px;
+      color: #0056b3;
+      margin-bottom: 6px;
+    }
+    
+    .page-info p {
+      color: #333;
+      margin: 3px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 LLM Assistant</h1>
+    <div class="header-actions">
+      <button id="settingsBtn">⚙️ Settings</button>
+      <button id="clearBtn">🗑️ Clear</button>
+    </div>
+  </div>
+  
+  <div class="chat-container" id="chatContainer">
+    <div class="message system">Welcome! I can help you navigate and interact with this webpage.</div>
+  </div>
+  
+  <div class="input-area">
+    <div class="page-info" id="pageInfo" style="display: none;">
+      <h3>📄 Current Page</h3>
+      <p id="pageTitle"></p>
+      <p id="pageUrl" style="font-size: 11px; color: #666;"></p>
+    </div>
+    
+    <div class="input-wrapper">
+      <textarea id="userMessage" placeholder="Ask me to help with this page... (e.g., 'Click the login button', 'Scroll down', 'What is this page about?')"></textarea>
+      <button class="send-btn" id="sendBtn">Send</button>
+    </div>
+    
+    <div class="quick-actions">
+      <button class="quick-action-btn" data-action="scroll down">⬇️ Scroll Down</button>
+      <button class="quick-action-btn" data-action="scroll up">⬆️ Scroll Up</button>
+      <button class="quick-action-btn" data-action="summarize this page">📝 Summarize Page</button>
+      <button class="quick-action-btn" data-action="what can I do here?">❓ What can I do?</button>
+    </div>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
