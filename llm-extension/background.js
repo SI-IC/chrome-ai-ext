@@ -220,16 +220,47 @@ async function handleChatWithPageContext(request, sendResponse) {
     return;
   }
 
-  // Get current page content
+  // Get current page content with detailed context
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const tab = tabs[0];
   
   let pageContent = '';
   try {
+    // Inject content script first to ensure it's loaded
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     const content = await chrome.tabs.sendMessage(tab.id, { action: 'getPageContent' });
-    pageContent = `Current Page: ${content.title}\nURL: ${content.url}\nHeadings: ${content.headings.map(h => h.text).join(', ')}\nLinks (first 20): ${content.links.slice(0, 20).map(l => l.text).join(', ')}`;
+    
+    // Format rich context for LLM
+    const linksText = content.links && content.links.length > 0 
+      ? content.links.slice(0, 100).map(l => `- "${l.text}"`).join('\n') 
+      : 'No links found';
+    
+    const buttonsText = content.buttons && content.buttons.length > 0
+      ? content.buttons.slice(0, 50).map(b => `- "${b.text}"`).join('\n')
+      : 'No buttons found';
+    
+    const headingsText = content.headings && content.headings.length > 0
+      ? content.headings.map(h => `- "${h.text}"`).join('\n')
+      : 'No headings found';
+    
+    const inputsText = content.inputs && content.inputs.length > 0
+      ? content.inputs.map(i => `- "${i.text}"`).join('\n')
+      : 'No inputs found';
+    
+    pageContent = `Current Page: ${content.title}\nURL: ${content.url}\n\n=== HEADINGS ===\n${headingsText}\n\n=== LINKS (clickable elements) ===\n${linksText}\n\n=== BUTTONS ===\n${buttonsText}\n\n=== INPUTS/FORMS ===\n${inputsText}`;
+    
+    // Add snippet if available (contains all visible text including dropdown menus)
+    if (content.snippet && content.snippet.length > 0) {
+      const snippetPreview = content.snippet.substring(0, 5000);
+      pageContent += `\n\n=== ALL VISIBLE TEXT ON PAGE (includes dropdown menus, hidden text, etc.) ===\n${snippetPreview}`;
+    }
   } catch (error) {
-    pageContent = `Current Page: ${tab.title}\nURL: ${tab.url}`;
+    pageContent = `Current Page: ${tab.title}\nURL: ${tab.url}\n(Note: Could not retrieve detailed page content - try refreshing the page)`;
   }
 
   const systemPrompt = `${result.systemPrompt || 'You are a helpful AI assistant that can help users navigate websites and perform actions on web pages.'}
