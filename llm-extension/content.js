@@ -8,6 +8,12 @@
 
   // Listen for messages from background/popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handle ping to check if content script is alive
+    if (request.type === 'PING') {
+      sendResponse({ type: 'PONG' });
+      return true;
+    }
+    
     if (request.action === 'getPageContent') {
       // Return full page content
       sendResponse({
