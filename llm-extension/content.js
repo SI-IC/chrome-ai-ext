@@ -208,24 +208,49 @@
       return element;
     }
     
-    // Try by exact text content (case-insensitive)
+    // Try by text content with fuzzy matching (handles "Данные счетчики" vs "Данные счетчиков")
     const elements = document.querySelectorAll('*');
     let bestMatch = null;
     let bestMatchScore = 0;
+    const normalizedSearch = cleanSelector.toLowerCase().trim();
     
     for (const el of elements) {
-      const text = (el.innerText || el.textContent || '').trim().toLowerCase();
-      const selectorLower = cleanSelector.toLowerCase();
+      // Skip hidden elements
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
       
-      // Exact match (highest priority)
-      if (text === selectorLower) {
-        console.log('[findElement] Found by exact text:', el.tagName);
+      const text = (el.innerText || el.textContent || '').trim();
+      if (!text) continue;
+      
+      const normalizedText = text.toLowerCase();
+      
+      let score = 0;
+
+      // 1. Exact match (highest priority)
+      if (normalizedText === normalizedSearch) {
+        console.log('[findElement] Found by exact text:', el.tagName, text);
         return el;
       }
       
-      // Partial match - prefer shorter, more specific matches
-      if (cleanSelector.length > 2 && text.includes(selectorLower)) {
-        const score = 100 - Math.abs(text.length - selectorLower.length);
+      // 2. Text contains search query (e.g., looking for "Данные счетчики", found "Данные счетчиков")
+      if (normalizedText.includes(normalizedSearch)) {
+        score = 90 - (normalizedText.length - normalizedSearch.length);
+        if (score > bestMatchScore) {
+          bestMatchScore = score;
+          bestMatch = el;
+        }
+      }
+      // 3. Search query contains text (e.g., looking for long phrase, found short button)
+      else if (normalizedSearch.includes(normalizedText) && normalizedText.length > 3) {
+        score = 80 - (normalizedSearch.length - normalizedText.length);
+        if (score > bestMatchScore) {
+          bestMatchScore = score;
+          bestMatch = el;
+        }
+      }
+      // 4. Similar start (first 5+ chars match)
+      else if (normalizedText.startsWith(normalizedSearch.substring(0, Math.min(6, normalizedSearch.length))) && normalizedSearch.length > 4) {
+        score = 70;
         if (score > bestMatchScore) {
           bestMatchScore = score;
           bestMatch = el;
@@ -234,7 +259,7 @@
     }
     
     if (bestMatch) {
-      console.log('[findElement] Found by partial text:', bestMatch.tagName, bestMatch.innerText?.substring(0, 30));
+      console.log('[findElement] Found by fuzzy match (score:', bestMatchScore + '):', bestMatch.tagName, (bestMatch.innerText || bestMatch.textContent).substring(0, 50));
       return bestMatch;
     }
     
