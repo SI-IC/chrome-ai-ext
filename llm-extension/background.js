@@ -325,9 +325,11 @@ Provide a helpful response. If you need to perform actions, use the special synt
       actions: actions
     });
 
-    // Execute actions after sending response with improved content script handling
+    // Execute actions after sending response with improved content script handling and debugging
     for (const action of actions) {
       try {
+        console.log('Executing action:', action);
+        
         // First ensure content script is loaded by injecting it if needed
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -335,7 +337,21 @@ Provide a helpful response. If you need to perform actions, use the special synt
         });
         
         // Wait a bit longer to ensure the content script is fully initialized
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check if content script is responding
+        try {
+          const pingResult = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+          console.log('Content script ping result:', pingResult);
+        } catch (pingError) {
+          console.error('Content script not responding to PING:', pingError);
+          // Re-inject and wait again
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
         
         // Now send the action message
         const result = await chrome.tabs.sendMessage(tab.id, {
@@ -343,6 +359,8 @@ Provide a helpful response. If you need to perform actions, use the special synt
           actionType: action.type,
           target: action.target
         });
+        
+        console.log('Action result:', result);
         
         if (!result || !result.success) {
           console.error('Action failed:', result?.message || 'Unknown error');
@@ -359,6 +377,8 @@ Provide a helpful response. If you need to perform actions, use the special synt
             actionType: action.type,
             target: action.target
           });
+          
+          console.log('Retry action result:', retryResult);
           
           if (!retryResult || !retryResult.success) {
             console.error('Retry action failed:', retryResult?.message || 'Unknown error');
