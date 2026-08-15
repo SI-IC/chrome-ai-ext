@@ -325,67 +325,70 @@ Provide a helpful response. If you need to perform actions, use the special synt
       actions: actions
     });
 
-    // Execute actions after sending response with improved content script handling and debugging
+// Execute actions after sending response with improved error handling
     for (const action of actions) {
       try {
-        console.log('Executing action:', action);
-        
-        // First ensure content script is loaded by injecting it if needed
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        
-        // Wait a bit longer to ensure the content script is fully initialized
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        console.log("=== Executing action ===", action);
+
+        // Wait a bit to ensure content script is ready (it's already injected via manifest)
+        await new Promise(resolve => setTimeout(resolve, 200));
+
         // Check if content script is responding
+        let contentScriptReady = false;
         try {
-          const pingResult = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
-          console.log('Content script ping result:', pingResult);
+          const pingResult = await chrome.tabs.sendMessage(tab.id, { type: "PING" });
+          if (pingResult && pingResult.type === "PONG") {
+            contentScriptReady = true;
+            console.log("✓ Content script is ready");
+          }
         } catch (pingError) {
-          console.error('Content script not responding to PING:', pingError);
-          // Re-inject and wait again
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-          });
-          await new Promise(resolve => setTimeout(resolve, 500));
+          console.error("✗ Content script not responding:", pingError.message);
         }
-        
-        // Now send the action message
+
+        if (!contentScriptReady) {
+          console.warn("Content script may not be fully ready, but attempting action anyway...");
+        }
+
+        // Send the action message
         const result = await chrome.tabs.sendMessage(tab.id, {
-          action: 'performAction',
+          action: "performAction",
           actionType: action.type,
           target: action.target
         });
-        
-        console.log('Action result:', result);
-        
-        if (!result || !result.success) {
-          console.error('Action failed:', result?.message || 'Unknown error');
+
+        console.log("=== Action result ===", result);
+
+        if (!result) {
+          console.error("✗ Action returned no result");
+        } else if (!result.success) {
+          console.error("✗ Action failed:", result.message);
+        } else {
+          console.log("✓ Action succeeded:", result.message);
         }
-        
+
         // If action indicates menu was opened and retry is needed, wait and execute again
         if (result && result.needsRetry && result.retryDelay) {
-          console.log(`Waiting ${result.retryDelay}ms for menu to open before retrying...`);
+          console.log(`⏳ Waiting ${result.retryDelay}ms for menu to open before retrying...`);
           await new Promise(resolve => setTimeout(resolve, result.retryDelay));
-          
+
           // Retry the same action (now the element should be visible)
           const retryResult = await chrome.tabs.sendMessage(tab.id, {
-            action: 'performAction',
+            action: "performAction",
             actionType: action.type,
             target: action.target
           });
-          
-          console.log('Retry action result:', retryResult);
-          
+
+          console.log("=== Retry result ===", retryResult);
+
           if (!retryResult || !retryResult.success) {
-            console.error('Retry action failed:', retryResult?.message || 'Unknown error');
+            console.error("✗ Retry action failed:", retryResult?.message || "Unknown error");
+          } else {
+            console.log("✓ Retry succeeded:", retryResult.message);
           }
         }
       } catch (error) {
-        console.error('Failed to execute action:', error);
+        console.error("=== Failed to execute action ===", error.message);
+        console.error("Stack:", error.stack);
       }
     }
 
