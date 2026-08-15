@@ -286,6 +286,16 @@ Provide a helpful response. If you need to perform actions, use the special synt
     // Execute actions after sending response
     for (const action of actions) {
       try {
+        // First ensure content script is loaded by executing a simple script
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {} // Empty function just to ensure context exists
+        });
+        
+        // Small delay to ensure content script is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Now send the action message
         await chrome.tabs.sendMessage(tab.id, {
           action: 'performAction',
           actionType: action.type,
