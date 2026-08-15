@@ -252,12 +252,23 @@ async function handleChatWithPageContext(request, sendResponse) {
       ? content.inputs.map(i => `- "${i.text}"`).join('\n')
       : 'No inputs found';
     
-    pageContent = `Current Page: ${content.title}\nURL: ${content.url}\n\n=== HEADINGS ===\n${headingsText}\n\n=== LINKS (clickable elements) ===\n${linksText}\n\n=== BUTTONS ===\n${buttonsText}\n\n=== INPUTS/FORMS ===\n${inputsText}`;
+    // Include hidden menu items - crucial for dropdown navigation!
+    let hiddenMenusText = '';
+    if (content.hiddenMenuItems && content.hiddenMenuItems.length > 0) {
+      hiddenMenusText = `\n\n=== HIDDEN MENU ITEMS (in dropdowns/collapsed menus) ===\nThese items are currently hidden but can be accessed by clicking their parent menu:\n${content.hiddenMenuItems.map(item => `- "${item.text}" (parent: ${item.parent})`).join('\n')}`;
+    }
+    
+    pageContent = `Current Page: ${content.title}\nURL: ${content.url}\n\n=== HEADINGS ===\n${headingsText}\n\n=== LINKS (clickable elements) ===\n${linksText}\n\n=== BUTTONS ===\n${buttonsText}\n\n=== INPUTS/FORMS ===\n${inputsText}${hiddenMenusText}`;
     
     // Add snippet if available (contains all visible text including dropdown menus)
     if (content.snippet && content.snippet.length > 0) {
       const snippetPreview = content.snippet.substring(0, 5000);
-      pageContent += `\n\n=== ALL VISIBLE TEXT ON PAGE (includes dropdown menus, hidden text, etc.) ===\n${snippetPreview}`;
+      pageContent += `\n\n=== ALL VISIBLE TEXT ON PAGE ===\n${snippetPreview}`;
+    }
+    
+    // Important hint for LLM about hidden menus
+    if (content.hasHiddenMenus) {
+      pageContent += `\n\n⚠️ NOTE: This page has HIDDEN menu items in dropdowns. To access them, you may need to first click on a menu button (like "Menu", "☰", or a profile icon) to reveal the dropdown, THEN click the desired item.`;
     }
   } catch (error) {
     pageContent = `Current Page: ${tab.title}\nURL: ${tab.url}\n(Note: Could not retrieve detailed page content - try refreshing the page)`;

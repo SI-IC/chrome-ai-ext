@@ -31,16 +31,40 @@
       const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'))
         .map(h => ({ text: h.innerText.trim() }));
 
-      // Collect all visible text including dropdown menus and hidden elements that become visible on hover
-      const allTexts = Array.from(document.querySelectorAll('*'))
-        .filter(el => {
-          const hasText = el.innerText && el.innerText.trim().length > 0;
-          const style = window.getComputedStyle(el);
-          const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-          return hasText && isVisible;
-        })
-        .slice(0, 300)
-        .map(el => el.innerText.trim());
+      // Collect ALL text including hidden elements (dropdown menus, collapsed sections, etc.)
+      // This is crucial for finding menu items that are currently hidden
+      const allElements = Array.from(document.querySelectorAll('*'));
+      const visibleTexts = [];
+      const hiddenMenuItems = [];
+      
+      for (const el of allElements) {
+        const hasText = el.innerText && el.innerText.trim().length > 0;
+        if (!hasText) continue;
+        
+        const style = window.getComputedStyle(el);
+        const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        const text = el.innerText.trim();
+        
+        // Check if this might be a menu item (inside nav, menu, dropdown, etc.)
+        const isMenuItem = el.closest('nav, [role="menu"], [role="menubar"], .menu, .dropdown, .nav, header') !== null;
+        
+        if (isVisible) {
+          visibleTexts.push(text);
+        } else if (isMenuItem && text.length < 50) {
+          // Hidden menu items are important!
+          hiddenMenuItems.push({
+            text: text,
+            parent: el.parentElement?.tagName || 'unknown',
+            classes: el.className || ''
+          });
+        }
+      }
+      
+      // Limit visible texts to avoid token overflow
+      const snippet = visibleTexts.slice(0, 300).join(' | ');
+      
+      // Deduplicate hidden menu items
+      const uniqueHiddenItems = [...new Map(hiddenMenuItems.map(item => [item.text, item])).values()];
 
       sendResponse({
         title: document.title,
@@ -49,7 +73,9 @@
         buttons,
         inputs,
         headings,
-        snippet: allTexts.join(' | ')
+        snippet,
+        hiddenMenuItems: uniqueHiddenItems.slice(0, 50), // Include up to 50 hidden menu items
+        hasHiddenMenus: uniqueHiddenItems.length > 0
       });
     }
     
