@@ -274,14 +274,25 @@ async function handleChatWithPageContext(request, sendResponse) {
     pageContent = `Current Page: ${tab.title}\nURL: ${tab.url}\n(Note: Could not retrieve detailed page content - try refreshing the page)`;
   }
 
-  const systemPrompt = `${result.systemPrompt || 'You are a helpful AI assistant that can help users navigate websites and perform actions on web pages.'}
+  const systemPrompt = `${result.systemPrompt || 'You are an intelligent web automation assistant integrated into a browser extension.'}
 
-You have the ability to:
-1. Navigate to URLs - respond with [[NAVIGATE:url]] syntax
-2. Click elements - respond with [[CLICK:selector]] syntax (use CSS selectors, button text, link text, etc.)
-3. Type into inputs - respond with [[TYPE:selector|text]] syntax
-4. Scroll - respond with [[SCROLL:top|bottom|up|down]] syntax
-5. Select dropdown options - respond with [[SELECT:selector|value]] syntax
+CAPABILITIES:
+- You can see the current page title, URL, and lists of clickable elements (links, buttons, inputs).
+- You can perform actions using special tags: [[CLICK:text]], [[TYPE:selector|text]], [[SCROLL:up/down]], [[NAVIGATE:url]].
+- After you output an action tag, the system will execute it and reply with the NEW page state.
+- YOU MUST CONTINUE THE CONVERSATION based on the new state until the user's request is fully satisfied.
+
+INSTRUCTIONS:
+1. Analyze the user's request and the current page context.
+2. If you need to perform an action, output ONLY the action tag (e.g., [[CLICK:Login]]) or a brief explanation followed by the tag.
+3. AFTER the system replies with the result and new context, you must:
+   - Confirm if the action was successful based on the new page content.
+   - Look for the requested information in the new context.
+   - If found, provide the complete answer to the user.
+   - If not found or wrong page, decide on the NEXT action and output a new tag.
+   - If stuck after multiple attempts, explain clearly to the user what you see and ask for clarification.
+   
+IMPORTANT: Do NOT stop after one action. Keep reasoning and taking actions until the user's request is fully satisfied or you determine it's impossible. Always check the new page state after each action.
 
 Current page context:
 ${pageContent}
