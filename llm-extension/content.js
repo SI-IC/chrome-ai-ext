@@ -10,6 +10,7 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Handle ping to check if content script is alive
     if (request.type === 'PING') {
+      console.log('Content Script: PING received, sending PONG');
       sendResponse({ type: 'PONG' });
       return true;
     }
@@ -186,61 +187,126 @@
     }
   }
 
-  // Find element using various strategies
+  // Find element using various strategies with improved matching and logging
   function findElement(selector) {
     // Clean selector from quotes if present
     const cleanSelector = selector.replace(/^"/g, '').replace(/"$/g, '').trim();
     
+    console.log('[findElement] Looking for:', cleanSelector);
+    
     // Try CSS selector first
     let element = document.querySelector(cleanSelector);
-    if (element) return element;
+    if (element) {
+      console.log('[findElement] Found by CSS selector');
+      return element;
+    }
     
     // Try by ID
     element = document.getElementById(cleanSelector);
-    if (element) return element;
+    if (element) {
+      console.log('[findElement] Found by ID');
+      return element;
+    }
     
     // Try by exact text content (case-insensitive)
     const elements = document.querySelectorAll('*');
+    let bestMatch = null;
+    let bestMatchScore = 0;
+    
     for (const el of elements) {
       const text = (el.innerText || el.textContent || '').trim().toLowerCase();
-      if (text === cleanSelector.toLowerCase()) {
+      const selectorLower = cleanSelector.toLowerCase();
+      
+      // Exact match (highest priority)
+      if (text === selectorLower) {
+        console.log('[findElement] Found by exact text:', el.tagName);
         return el;
       }
-      // Also try partial match for longer texts
-      if (cleanSelector.length > 3 && text.includes(cleanSelector.toLowerCase())) {
-        return el;
+      
+      // Partial match - prefer shorter, more specific matches
+      if (cleanSelector.length > 2 && text.includes(selectorLower)) {
+        const score = 100 - Math.abs(text.length - selectorLower.length);
+        if (score > bestMatchScore) {
+          bestMatchScore = score;
+          bestMatch = el;
+        }
       }
     }
     
-    // Try by aria-label
-    element = document.querySelector(`[aria-label*="${cleanSelector}"]`);
-    if (element) return element;
+    if (bestMatch) {
+      console.log('[findElement] Found by partial text:', bestMatch.tagName, bestMatch.innerText?.substring(0, 30));
+      return bestMatch;
+    }
+    
+    // Try by aria-label (case insensitive)
+    element = document.querySelector(`[aria-label*="${cleanSelector}" i]`);
+    if (element) {
+      console.log('[findElement] Found by aria-label');
+      return element;
+    }
     
     // Try by placeholder
-    element = document.querySelector(`[placeholder*="${cleanSelector}"]`);
-    if (element) return element;
+    element = document.querySelector(`[placeholder*="${cleanSelector}" i]`);
+    if (element) {
+      console.log('[findElement] Found by placeholder');
+      return element;
+    }
     
     // Try by name
-    element = document.querySelector(`[name*="${cleanSelector}"]`);
-    if (element) return element;
+    element = document.querySelector(`[name*="${cleanSelector}" i]`);
+    if (element) {
+      console.log('[findElement] Found by name');
+      return element;
+    }
     
-    // Try by title attribute
-    element = document.querySelector(`[title*="${cleanSelector}"]`);
-    if (element) return element;
+    // Try by title
+    element = document.querySelector(`[title*="${cleanSelector}" i]`);
+    if (element) {
+      console.log('[findElement] Found by title');
+      return element;
+    }
     
-    // Try to find link by href containing the text
+    // Try links by href or text
     const links = document.querySelectorAll('a[href]');
     for (const link of links) {
       if (link.href.toLowerCase().includes(cleanSelector.toLowerCase())) {
+        console.log('[findElement] Found link by href');
+        return link;
+      }
+      const linkText = (link.innerText || link.textContent || '').trim().toLowerCase();
+      if (linkText.includes(cleanSelector.toLowerCase())) {
+        console.log('[findElement] Found link by text:', link.innerText?.substring(0, 30));
         return link;
       }
     }
     
-    // Try to find element with role matching the selector
-    element = document.querySelector(`[role="${cleanSelector}"]`);
-    if (element) return element;
+    // Try buttons by text
+    const buttons = document.querySelectorAll('button, [role="button"]');
+    for (const btn of buttons) {
+      const btnText = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+      if (btnText.includes(cleanSelector.toLowerCase())) {
+        console.log('[findElement] Found button by text:', btn.innerText?.substring(0, 30));
+        return btn;
+      }
+    }
     
-    console.log('Element not found:', cleanSelector);
+    // Try by role
+    element = document.querySelector(`[role="${cleanSelector}"]`);
+    if (element) {
+      console.log('[findElement] Found by role');
+      return element;
+    }
+    
+    // Last resort: any element containing the text
+    for (const el of elements) {
+      const text = (el.innerText || el.textContent || '').trim();
+      if (text && text.toLowerCase().includes(cleanSelector.toLowerCase())) {
+        console.log('[findElement] Found by text containment:', el.tagName, text.substring(0, 30));
+        return el;
+      }
+    }
+    
+    console.log('[findElement] NOT FOUND:', cleanSelector);
     return null;
   }
 
