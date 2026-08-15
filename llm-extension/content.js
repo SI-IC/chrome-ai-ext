@@ -102,6 +102,34 @@
         case 'click':
           const clickElement = findElement(target);
           if (clickElement) {
+            // Check if element is hidden (likely in a dropdown menu)
+            const style = window.getComputedStyle(clickElement);
+            const isHidden = style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0';
+            
+            if (isHidden) {
+              // Try to find and click the parent menu trigger first
+              const menuContainer = clickElement.closest('nav, [role="menu"], [role="menubar"], .menu, .dropdown, header');
+              if (menuContainer) {
+                // Look for a button/link that opens this menu
+                const menuTrigger = menuContainer.querySelector('button, a[role="button"], summary, .menu-toggle, .dropdown-toggle, [aria-haspopup="true"]');
+                if (menuTrigger) {
+                  menuTrigger.click();
+                  return { 
+                    success: true, 
+                    message: `Opened menu "${menuTrigger.innerText.trim() || menuTrigger.getAttribute('aria-label') || ''}". Please click again to select "${target}".`,
+                    needsRetry: true,
+                    retryDelay: 500 // Wait 500ms for menu to open
+                  };
+                }
+              }
+              // If no trigger found, still try to click the hidden element (might work with event bubbling)
+              clickElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              clickElement.click();
+              return { success: true, message: `Clicked hidden element: ${target}` };
+            }
+            
+            // Element is visible, click normally
+            clickElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             clickElement.click();
             return { success: true, message: `Clicked: ${target}` };
           }

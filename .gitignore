@@ -1,58 +1,63 @@
 ```
-# Editor/IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Logs
-*.log
-
-# Environment files
-.env
-.env.local
-*.env.*
-
-# Dependency directories
-node_modules/
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
 dist/
 build/
 target/
 
-# Python specific
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.py.class
-*.py.obj
+# Dependencies
+.venv/
+venv/
+node_modules/
+.julia/
+.zig-cache/
 
-# Compiled/Binary files
-*.exe
-*.dll
-*.so
-*.a
-*.o
-*.obj
-*.out
-*.class
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
 
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
+# Environment
+.env
+.env.local
+*.env.*
 
-# MyPy cache
-.mypy_cache/
-# PyTest cache
-.pytest_cache/
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # System files
 .DS_Store
 Thumbs.db
 
-# Compressed files
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+.eggs/
+
+# JavaScript/Node specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Compression files
 *.zip
 *.gz
 *.tar
