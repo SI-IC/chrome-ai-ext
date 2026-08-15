@@ -283,24 +283,28 @@ Provide a helpful response. If you need to perform actions, use the special synt
       actions: actions
     });
 
-    // Execute actions after sending response
+    // Execute actions after sending response with improved content script handling
     for (const action of actions) {
       try {
-        // First ensure content script is loaded by executing a simple script
+        // First ensure content script is loaded by injecting it if needed
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: () => {} // Empty function just to ensure context exists
+          files: ['content.js']
         });
         
-        // Small delay to ensure content script is ready
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait a bit longer to ensure the content script is fully initialized
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Now send the action message
-        await chrome.tabs.sendMessage(tab.id, {
+        const result = await chrome.tabs.sendMessage(tab.id, {
           action: 'performAction',
           actionType: action.type,
           target: action.target
         });
+        
+        if (!result || !result.success) {
+          console.error('Action failed:', result?.message || 'Unknown error');
+        }
       } catch (error) {
         console.error('Failed to execute action:', error);
       }
