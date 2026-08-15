@@ -347,6 +347,23 @@ Provide a helpful response. If you need to perform actions, use the special synt
         if (!result || !result.success) {
           console.error('Action failed:', result?.message || 'Unknown error');
         }
+        
+        // If action indicates menu was opened and retry is needed, wait and execute again
+        if (result && result.needsRetry && result.retryDelay) {
+          console.log(`Waiting ${result.retryDelay}ms for menu to open before retrying...`);
+          await new Promise(resolve => setTimeout(resolve, result.retryDelay));
+          
+          // Retry the same action (now the element should be visible)
+          const retryResult = await chrome.tabs.sendMessage(tab.id, {
+            action: 'performAction',
+            actionType: action.type,
+            target: action.target
+          });
+          
+          if (!retryResult || !retryResult.success) {
+            console.error('Retry action failed:', retryResult?.message || 'Unknown error');
+          }
+        }
       } catch (error) {
         console.error('Failed to execute action:', error);
       }
