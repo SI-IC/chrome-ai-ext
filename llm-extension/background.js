@@ -325,13 +325,25 @@ Provide a helpful response. If you need to perform actions, use the special synt
       actions: actions
     });
 
-// Execute actions after sending response with improved error handling
+    // Execute actions after sending response with improved error handling
     for (const action of actions) {
       try {
         console.log("=== Executing action ===", action);
 
-        // Wait a bit to ensure content script is ready (it's already injected via manifest)
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // First, ensure content script is loaded by injecting it explicitly
+        console.log("⏳ Injecting content script...");
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ["content.js"]
+          });
+          console.log("✓ Content script injected successfully");
+        } catch (injectError) {
+          console.warn("Content script injection failed (might already be loaded):", injectError.message);
+        }
+
+        // Wait a bit to ensure content script is initialized
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         // Check if content script is responding
         let contentScriptReady = false;
@@ -339,17 +351,19 @@ Provide a helpful response. If you need to perform actions, use the special synt
           const pingResult = await chrome.tabs.sendMessage(tab.id, { type: "PING" });
           if (pingResult && pingResult.type === "PONG") {
             contentScriptReady = true;
-            console.log("✓ Content script is ready");
+            console.log("✓ Content script is ready (PONG received)");
           }
         } catch (pingError) {
           console.error("✗ Content script not responding:", pingError.message);
+          throw new Error("Content script is not available. Please refresh the page and try again.");
         }
 
         if (!contentScriptReady) {
-          console.warn("Content script may not be fully ready, but attempting action anyway...");
+          throw new Error("Content script did not respond to PING. Please refresh the page.");
         }
 
         // Send the action message
+        console.log(`⏳ Sending ${action.type} action to content script...`);
         const result = await chrome.tabs.sendMessage(tab.id, {
           action: "performAction",
           actionType: action.type,
